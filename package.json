@@ -1,0 +1,44 @@
+{
+  "name": "tidewater",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tidewater - a probabilistic receivables forecaster for PayPal invoices, built on AG Studio",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "build": "vite build --config web/vite.config.ts",
+    "start": "tsx server/index.ts",
+    "seed": "tsx server/scripts/seed.ts",
+    "backtest": "tsx server/scripts/backtest.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "paypal:smoke": "tsx server/scripts/paypal-smoke.ts"
+  },
+  "dependencies": {
+    "ag-studio": "^3.0.0",
+    "ag-studio-react": "^3.0.0",
+    "express": "^4.22.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^4.6.7",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "playwright-core": "^1.64.1",
+    "typescript": "5.8",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

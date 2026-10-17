@@ -1,0 +1,224 @@
+{
+  "reports": [
+    {
+      "generatedAt": 1792219186564,
+      "scenario": "well-specified",
+      "description": "Log-normal truth, no reminders: the estimator's home turf.",
+      "nTrain": 208,
+      "nTest": 702,
+      "coverage": [
+        {
+          "nominal": 0.5,
+          "observed": 0.5512820512820513
+        },
+        {
+          "nominal": 0.8,
+          "observed": 0.8190883190883191
+        },
+        {
+          "nominal": 0.9,
+          "observed": 0.8931623931623932
+        }
+      ],
+      "pitHistogram": [
+        0.07977207977207977,
+        0.11253561253561253,
+        0.10398860398860399,
+        0.09971509971509972,
+        0.09544159544159544,
+        0.1168091168091168,
+        0.12393162393162394,
+        0.08974358974358974,
+        0.07692307692307693,
+        0.10113960113960115
+      ],
+      "pinball": {
+        "model": 6.898422280023087,
+        "payerMedianBaseline": 7.502371011967538,
+        "globalBaseline": 8.074008853602647,
+        "dueDateBaseline": 14.28097470269588
+      },
+      "maeMedianDays": {
+        "model": 18.884328155670783,
+        "payerMedianBaseline": 20.01076529705404,
+        "globalBaseline": 21.974265405190966,
+        "dueDateBaseline": 28.56194940539176
+      },
+      "kappa": null,
+      "ghost": {
+        "meanPredicted": 0.13883844728251343,
+        "observed": 0.12030075187969924,
+        "brierModel": 0.09297966454387718,
+        "brierBaseRate": 0.11179035524961688,
+        "n": 798
+      },
+      "notes": []
+    },
+    {
+      "generatedAt": 1792219186743,
+      "scenario": "misspecified-loglogistic",
+      "description": "Log-logistic (heavier-tailed) truth, no reminders: the model assumes log-normal.",
+      "nTrain": 211,
+      "nTest": 671,
+      "coverage": [
+        {
+          "nominal": 0.5,
+          "observed": 0.511177347242921
+        },
+        {
+          "nominal": 0.8,
+          "observed": 0.789865871833085
+        },
+        {
+          "nominal": 0.9,
+          "observed": 0.879284649776453
+        }
+      ],
+      "pitHistogram": [
+        0.09836065573770492,
+        0.08047690014903129,
+        0.09836065573770492,
+        0.10879284649776454,
+        0.10879284649776454,
+        0.10283159463487332,
+        0.10581222056631892,
+        0.09090909090909091,
+        0.09388971684053651,
+        0.11177347242921014
+      ],
+      "pinball": {
+        "model": 7.918601447666403,
+        "payerMedianBaseline": 8.753272346224117,
+        "globalBaseline": 9.312175226101104,
+        "dueDateBaseline": 15.603253170030722
+      },
+      "maeMedianDays": {
+        "model": 21.511325897793085,
+        "payerMedianBaseline": 22.938754160560464,
+        "globalBaseline": 25.050134892014576,
+        "dueDateBaseline": 31.206506340061445
+      },
+      "kappa": null,
+      "ghost": {
+        "meanPredicted": 0.1218846743028228,
+        "observed": 0.11243386243386243,
+        "brierModel": 0.08863649490999034,
+        "brierBaseRate": 0.10488146854993632,
+        "n": 756
+      },
+      "notes": []
+    },
+    {
+      "generatedAt": 1792219187012,
+      "scenario": "misspecified-batch",
+      "description": "Payers settle in 15-day batch cycles (multi-modal): the model assumes a smooth log-normal.",
+      "nTrain": 222,
+      "nTest": 842,
+      "coverage": [
+        {
+          "nominal": 0.5,
+          "observed": 0.49524940617577196
+        },
+        {
+          "nominal": 0.8,
+          "observed": 0.7731591448931117
+        },
+        {
+          "nominal": 0.9,
+          "observed": 0.8705463182897862
+        }
+      ],
+      "pitHistogram": [
+        0.0997624703087886,
+        0.10570071258907364,
+        0.10332541567695962,
+        0.0997624703087886,
+        0.10451306413301663,
+        0.11520190023752969,
+        0.08432304038004751,
+        0.09382422802850356,
+        0.0665083135391924,
+        0.12707838479809977
+      ],
+      "pinball": {
+        "model": 6.737606992870717,
+        "payerMedianBaseline": 7.0986867014096555,
+        "globalBaseline": 7.92311723162288,
+        "dueDateBaseline": 14.416237135267185
+      },
+      "maeMedianDays": {
+        "model": 18.136819626942803,
+        "payerMedianBaseline": 19.06869854458016,
+        "globalBaseline": 21.416416542924967,
+        "dueDateBaseline": 28.83247427053437
+      },
+      "kappa": null,
+      "ghost": {
+        "meanPredicted": 0.15162827393143008,
+        "observed": 0.12655601659751037,
+        "brierModel": 0.09620081717663707,
+        "brierBaseRate": 0.11468458364498722,
+        "n": 964
+      },
+      "notes": []
+    }
+  ],
+  "nudge": [
+    {
+      "truth": 0.6528222308489323,
+      "estimate": 0.6315850496451403,
+      "lo": 0.5477225575051662,
+      "hi": 0.7330206936482122,
+      "nObs": 59
+    },
+    {
+      "truth": 0.6460015494295323,
+      "estimate": 0.7753297169621791,
+      "lo": 0.6544857052828764,
+      "hi": 0.9344998624385761,
+      "nObs": 44
+    },
+    {
+      "truth": 0.6304076508164419,
+      "estimate": 0.6533134205677068,
+      "lo": 0.5566618959761291,
+      "hi": 0.7695003762894395,
+      "nObs": 54
+    },
+    {
+      "truth": 0.6773534295963267,
+      "estimate": 0.8456485064928956,
+      "lo": 0.7212492393164028,
+      "hi": 0.9970173368508116,
+      "nObs": 39
+    },
+    {
+      "truth": 0.6638959976352246,
+      "estimate": 0.7424553648729134,
+      "lo": 0.623458519907,
+      "hi": 0.8759025150516435,
+      "nObs": 50
+    },
+    {
+      "truth": 0.6457219682512179,
+      "estimate": 0.765901333492991,
+      "lo": 0.6651675170208847,
+      "hi": 0.890198053809951,
+      "nObs": 55
+    },
+    {
+      "truth": 0.6054038715210838,
+      "estimate": 0.6420049166463362,
+      "lo": 0.5657471327147523,
+      "hi": 0.7330206936482122,
+      "nObs": 59
+    },
+    {
+      "truth": 0.665472285140075,
+      "estimate": 0.6722498132799504,
+      "lo": 0.5657471327147523,
+      "hi": 0.7948232650698656,
+      "nObs": 51
+    }
+  ]
+}

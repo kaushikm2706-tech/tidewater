@@ -1,0 +1,22 @@
+// QA tour: node tools/shot3.mjs <out-prefix>
+import { chromium } from 'playwright-core';
+const prefix = process.argv[2];
+const exe = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox'] });
+const page = await browser.newPage({ viewport: { width: 1680, height: 1050 } });
+const logs = [];
+page.on('console', (m) => { const t = m.text(); if (!/License|\*\*\*|React DevTools|vite\]|unlocked for trial|watermark/.test(t)) logs.push(`[${m.type()}] ${t}`); });
+page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
+await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.waitForSelector('svg', { timeout: 20000 });
+await page.waitForTimeout(2000);
+for (const [name, label] of [['lens', 'Invoice lens'], ['model', 'Model'], ['audit', 'Audit']]) {
+  await page.getByRole('button', { name: label }).click();
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${prefix}-${name}.png` });
+}
+await page.getByRole('button', { name: 'Studio editor' }).click();
+await page.waitForTimeout(2500);
+await page.screenshot({ path: `${prefix}-studio.png` });
+console.log(logs.slice(0, 30).join('\n'));
+await browser.close();
