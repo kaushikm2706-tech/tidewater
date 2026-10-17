@@ -75,3 +75,7 @@ button { font-family: inherit; }
 .tw-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
 .tw-link { color: var(--teal); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 a { color: var(--teal); }
+
+/* AG Studio's AI assistant textarea defaults to black text, unreadable on the dark theme. */
+.ag-studio-ai-assistant-textarea { color: #e6f1ff !important; caret-color: #2dd4bf; }
+.ag-studio-ai-assistant-textarea::placeholder { color: rgba(215, 227, 244, 0.55); }
