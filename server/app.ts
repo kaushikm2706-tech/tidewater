@@ -38,7 +38,10 @@ export async function buildApp(cfg: Config, opts: { now?: number; seed?: boolean
   const ledger = new Ledger(store, port, clock, cfg, () => llmStatus(cfg));
   const actions = new Actions(ledger);
   const app: App = { cfg, store, port, clock, ledger, actions };
-  if (opts.seed !== false && store.countInvoices() === 0) await seed(app);
+  if (opts.seed !== false && store.countInvoices() === 0) {
+    if (!process.env.VITEST) console.log(cfg.paypal.mode === 'sandbox' ? 'First run: seeding synthetic history and creating live sandbox invoices (takes up to a minute)...' : 'First run: seeding synthetic simulator data...');
+    await seed(app);
+  }
   else await ledger.sync().catch((e) => console.warn('[sync] initial sync failed:', (e as Error).message));
   return app;
 }
