@@ -2,6 +2,16 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 
+// Load `.env` from the project root (Node does not do this by itself). Variables already set in the
+// real environment win. Skipped under the test runner so a local .env can never change test behaviour.
+if (!process.env.VITEST) {
+  try {
+    process.loadEnvFile(path.join(root, '.env'));
+  } catch {
+    /* no .env file: fine, run in simulator mode */
+  }
+}
+
 function env(name: string, fallback = ''): string {
   const v = process.env[name];
   return v === undefined || v === '' ? fallback : v;
