@@ -21,7 +21,7 @@ Calibrated intervals in backtests (80% interval observed 77-82% across three sce
 ## What we learned / limits (please read)
 - Demo data is **synthetic**; the simulator badge is always visible. Backtests are synthetic too.
 - The sandbox client was tested against a mock, not live PayPal, before submission. [Update this line after running `npm run paypal:smoke`.]
-- Point accuracy is modest; the value is calibrated uncertainty.
+- Median-date error is mostly irreducible noise (18.9 days vs 18.0 for an oracle that knows the true parameters, on synthetic data); the value is calibrated uncertainty.
 - The reminder effect is estimated observationally.
 
 ## What's next

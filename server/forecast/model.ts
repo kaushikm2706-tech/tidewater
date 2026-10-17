@@ -54,7 +54,7 @@ export const DEFAULT_CONFIG: ModelConfig = {
   maxIter: 400,
   tol: 1e-8,
   minDays: 0.25,
-  kappaPriorSd: 0.35,
+  kappaPriorSd: 0.6,
 };
 
 export interface PayerFit {
@@ -472,7 +472,7 @@ const KAPPA_GRID = Array.from({ length: 161 }, (_, i) => Math.exp(Math.log(0.15)
 export function estimateNudge(model: FittedModel, obs: Observation[], now: number): NudgeEffect {
   const cfg = model.config;
   const treated = obs.filter((o) => !o.cancelled && o.reminders.length > 0);
-  const items: { pp: ReturnType<typeof payerParams>; mu: number; sigma: number; r: number; t: number | null; e: number }[] = [];
+  const items: { payer: string; pp: ReturnType<typeof payerParams>; mu: number; sigma: number; r: number; t: number | null; e: number }[] = [];
   for (const o of treated) {
     const r = Math.max(daysBetween(Math.min(...o.reminders), o.sentAt), cfg.minDays);
     const e = o.paidAt !== null ? daysBetween(o.paidAt, o.sentAt) : daysBetween(now, o.sentAt);
@@ -481,6 +481,7 @@ export function estimateNudge(model: FittedModel, obs: Observation[], now: numbe
     const x1 = Math.log(Math.max(o.netDays, 1) / 30);
     const x2 = (lnAmount(o.amount) - model.amountMean) / model.amountSd;
     items.push({
+      payer: o.payerId,
       pp,
       mu: pp.a + model.beta[0] * x1 + model.beta[1] * x2,
       sigma: Math.sqrt(pp.sigma ** 2 + pp.aVar),
@@ -493,9 +494,13 @@ export function estimateNudge(model: FittedModel, obs: Observation[], now: numbe
   if (items.length < 4) {
     return { kappa: 1, lo: Math.exp(-1.28 * cfg.kappaPriorSd), hi: Math.exp(1.28 * cfg.kappaPriorSd), nObs: items.length, basis: 'prior' };
   }
-  const logPost = KAPPA_GRID.map((k) => {
-    let ll = prior(k);
-    for (const it of items) {
+  // Per-payer log-likelihood profiles on the grid. Invoices of one payer share an estimated payer
+  // intercept, so they are not independent; we keep the profiles so the interval can be widened by a
+  // cluster bootstrap over payers (see below).
+  const clusters = new Map<string, number[]>();
+  for (const it of items) {
+    const row = clusters.get(it.payer) ?? new Array<number>(KAPPA_GRID.length).fill(0);
+    KAPPA_GRID.forEach((k, gi) => {
       const sf0 = (t: number) => normSf((Math.log(Math.max(t, 1e-9)) - it.mu) / it.sigma);
       const Sr = Math.max(sf0(it.r), 1e-300);
       const piR = it.pp.pi / (it.pp.pi + (1 - it.pp.pi) * Sr);
@@ -503,37 +508,46 @@ export function estimateNudge(model: FittedModel, obs: Observation[], now: numbe
         const t0 = it.r + (it.t - it.r) / k;
         const dens = normPdf((Math.log(t0) - it.mu) / it.sigma) / (it.sigma * t0);
         const cond = ((1 - piR) * dens) / Sr;
-        ll += Math.log(Math.max(cond / k, 1e-300));
+        row[gi] += Math.log(Math.max(cond / k, 1e-300));
       } else {
         const e0 = it.r + (it.e - it.r) / k;
         const surv = piR + (1 - piR) * (sf0(e0) / Sr);
-        ll += Math.log(Math.max(surv, 1e-300));
+        row[gi] += Math.log(Math.max(surv, 1e-300));
       }
-    }
-    return ll;
-  });
-  const mx = Math.max(...logPost);
-  const wts = logPost.map((l) => Math.exp(l - mx));
-  const tot = wts.reduce((a, b) => a + b, 0);
-  const post = wts.map((x) => x / tot);
-  // posterior mean of ln(kappa), and 10%/90% quantiles on the grid
-  let lm = 0;
-  post.forEach((p, i) => (lm += p * Math.log(KAPPA_GRID[i])));
-  let c = 0;
-  let lo = KAPPA_GRID[0];
-  let hi = KAPPA_GRID[KAPPA_GRID.length - 1];
-  let gotLo = false;
-  for (let i = 0; i < post.length; i++) {
-    c += post[i];
-    if (!gotLo && c >= 0.1) {
-      lo = KAPPA_GRID[i];
-      gotLo = true;
-    }
-    if (c >= 0.9) {
-      hi = KAPPA_GRID[i];
-      break;
-    }
+    });
+    clusters.set(it.payer, row);
   }
+  const profiles = [...clusters.values()];
+  const lnGrid = KAPPA_GRID.map((k) => Math.log(k));
+  const summarise = (rows: number[][]) => {
+    const lp = KAPPA_GRID.map((k, gi) => prior(k) + rows.reduce((a, r) => a + r[gi], 0));
+    const mx = Math.max(...lp);
+    const w = lp.map((l) => Math.exp(l - mx));
+    const tot = w.reduce((a, b) => a + b, 0);
+    const post = w.map((x) => x / tot);
+    let mean = 0;
+    post.forEach((p, i) => (mean += p * lnGrid[i]));
+    let v = 0;
+    post.forEach((p, i) => (v += p * (lnGrid[i] - mean) ** 2));
+    return { mean, sd: Math.sqrt(v) };
+  };
+  const full = summarise(profiles);
+  // Cluster bootstrap over payers: spread of the posterior mean when whole payers are resampled.
+  const rng = makeRng(20261017);
+  const B = 200;
+  const means: number[] = [];
+  for (let b = 0; b < B; b++) {
+    const sample: number[][] = [];
+    for (let i = 0; i < profiles.length; i++) sample.push(profiles[Math.floor(rng.next() * profiles.length)]);
+    means.push(summarise(sample).mean);
+  }
+  const bm = means.reduce((a, b) => a + b, 0) / B;
+  const bootSd = Math.sqrt(means.reduce((a, b) => a + (b - bm) ** 2, 0) / (B - 1));
+  const sdTot = Math.max(full.sd, bootSd);
+  const z = 1.2816; // central 80% interval
+  const lo = Math.exp(full.mean - z * sdTot);
+  const hi = Math.exp(full.mean + z * sdTot);
+  const lm = full.mean;
   return { kappa: Math.exp(lm), lo, hi, nObs: items.length, basis: 'estimated' };
 }
 

@@ -11,6 +11,8 @@
  *   GET  /v2/invoicing/invoices?page=&page_size=        list
  *   POST /v1/notifications/verify-webhook-signature     webhook verification
  *
+ * Endpoint paths (create, remind, payments) and invoicing webhook event names were checked against
+ * PayPal's published reference; request-body details beyond that were not verifiable from it.
  * This file has been exercised against a local mock of those endpoints (tests/paypal-live.test.ts)
  * but NOT against PayPal's servers from the build environment (no sandbox credentials were
  * available). `npm run paypal:smoke` runs the full create -> send -> remind -> pay -> read loop
@@ -171,7 +173,7 @@ export class LivePayPal implements PayPalPort {
     const created = await this.call<Json>('POST', '/v2/invoicing/invoices', draft);
     const id = created.body.id ?? String(created.body.href ?? '').split('/').filter(Boolean).pop();
     if (!id) throw new PayPalError('Create invoice returned no id/href', created.status, null, created.body);
-    await this.call('POST', `/v2/invoicing/invoices/${encodeURIComponent(id)}/send`, { send_to_recipient: true, send_to_invoicer: false });
+    await this.call('POST', `/v2/invoicing/invoices/${encodeURIComponent(id)}/send`, { send_to_invoicer: false });
     return this.getInvoice(id);
   }
 

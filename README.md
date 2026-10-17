@@ -76,13 +76,13 @@ web/ (React 18 + AG Studio 3)  <->  server/ (Express + node:sqlite)
 
 ## Honest limitations
 
-- **`LivePayPal` has been tested only against a local mock of the Invoicing API**, not PayPal's servers. Endpoint paths, field names and webhook event names were written from PayPal's documentation as I understood it and may need adjusting. `npm run paypal:smoke` exists to find out on first run.
+- **`LivePayPal` has not been run against PayPal's servers** (that needs your sandbox credentials); it is tested against a local mock. I checked PayPal's published reference for the endpoint paths used (`POST /v2/invoicing/invoices`, `/{id}/remind`, `/{id}/payments`) and for the invoicing webhook event names (`INVOICING.INVOICE.CREATED/UPDATED/PAID/CANCELLED/REFUNDED/SCHEDULED`); those match. I could **not** confirm from the docs pages I could read the exact request-body fields for reminders, the full `term_type` and payment `method` enums, or whether `DUE_ON_DATE_SPECIFIED` is accepted. `npm run paypal:smoke` exists to settle those on first run. The webhook handler reacts to any `INVOICING.*` event and re-syncs, and the app also polls, because sandbox webhooks are reported to be unreliable.
 - **The LLM path has been tested only against a mock OpenAI-compatible server.** Compatibility with specific providers is unverified.
 - **All backtests and reminder-effect results are on synthetic data.** The reminder effect is estimated observationally and assumes reminded and un-reminded invoices are comparable. The weaker effect of repeat reminders (exponent 0.5) is an assumption.
-- Point accuracy is modest: in the well-specified backtest the median-payment MAE is ~19 days (vs ~29 for the due date). The value is calibrated uncertainty (80% interval observed 77-82%), not precise dates.
-- Reminder-effect recovery was inside its 80% interval in 5 of 8 synthetic runs, with estimates biased toward "no effect" on small samples.
+- Median-date error in the well-specified backtest is about 18.9 days, against 18.0 for an oracle that knows every payer's true parameters, so almost all of it is irreducible noise in that synthetic data. Real payers may be harder or easier. The value is calibrated uncertainty (80% interval observed 77-82%), not precise dates.
+- Reminder effect: the interval is now a payer-level cluster bootstrap. On synthetic ledgers the 80% interval contained the true value in 35/40 runs on one seed set and 30/40 on another (expect roughly 75-90%). The estimate still leans slightly toward "no effect" (mean log-bias about +0.06).
 - Invoices unpaid after 120 days are held out of forecasts and reported separately as stale.
-- AG Studio is a commercial product; running it beyond a trial needs a licence key from AG Grid. Check their current terms. The AI panel is only available in edit mode.
+- AG Studio is a commercial product. AG Grid's pricing page lists a 45-day free trial and says licence pricing depends on how it is deployed; it does not say what happens when the trial ends, or whether a hosted demo is covered. Ask AG Grid (sales form on their site) for a key that covers judging (Dec 1-15), and include a note in your Devpost submission.
 - The production bundle is large (~5.6 MB JS).
 
 ## Licence

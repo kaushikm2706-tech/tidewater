@@ -22,6 +22,7 @@ Scored invoices: 702 (mean ledger size 208).
 | Payer empirical quantiles | 7.50 | 20.01 |
 | Global model (no payer info) | 8.07 | 21.97 |
 | Invoice due date | 14.28 | 28.56 |
+| *Oracle (true parameters known)* | n/a | *17.97* |
 
 Ghost (never-pays) probability: mean predicted 13.9% vs observed 12.0%; Brier 0.0930 vs base-rate 0.1118 (n=798).
 
@@ -79,13 +80,15 @@ Ledgers with a 60%-probability merchant reminder policy. `truth` is the geometri
 
 | Seed | n obs | Truth | Estimate | 80% interval | Covered |
 |---|---|---|---|---|---|
-| 1 | 59 | 0.65 | 0.63 | 0.55-0.73 | yes |
-| 2 | 44 | 0.65 | 0.78 | 0.65-0.93 | no |
-| 3 | 54 | 0.63 | 0.65 | 0.56-0.77 | yes |
-| 4 | 39 | 0.68 | 0.85 | 0.72-1.00 | no |
-| 5 | 50 | 0.66 | 0.74 | 0.62-0.88 | yes |
-| 6 | 55 | 0.65 | 0.77 | 0.67-0.89 | no |
-| 7 | 59 | 0.61 | 0.64 | 0.57-0.73 | yes |
-| 8 | 51 | 0.67 | 0.67 | 0.57-0.79 | yes |
+| 1 | 59 | 0.65 | 0.61 | 0.52-0.72 | yes |
+| 2 | 44 | 0.65 | 0.75 | 0.63-0.91 | yes |
+| 3 | 54 | 0.63 | 0.63 | 0.51-0.78 | yes |
+| 4 | 39 | 0.68 | 0.83 | 0.70-1.00 | no |
+| 5 | 50 | 0.66 | 0.72 | 0.59-0.87 | yes |
+| 6 | 55 | 0.65 | 0.75 | 0.61-0.92 | yes |
+| 7 | 59 | 0.61 | 0.62 | 0.54-0.72 | yes |
+| 8 | 51 | 0.67 | 0.64 | 0.49-0.85 | yes |
 
-Truth fell inside the 80% interval in 5/8 runs. The prior is centred on kappa = 1 (no effect), so with little data the estimate is pulled toward "reminders do nothing".
+First 8 of 40 runs shown. Across all 40: truth fell inside the 80% interval in 35/40 (88%; the standard error of that figure is about 6 points); mean log-bias of the estimate 0.061 (positive = estimate closer to "no effect" than the truth); mean interval width on the log scale 0.41.
+
+The interval is a payer-level cluster bootstrap around a grid posterior (invoices of the same payer share an estimated intercept, so treating them as independent made the earlier interval too narrow: it covered the truth in roughly 55% of 40 runs on a separate seed set); a later check of the final method on a different, untouched set of 40 seeds (601-640) gave 30/40 (75%), so expect roughly 75-90%. The prior (sd 0.6 on ln kappa) is centred on kappa = 1, so with little data the estimate is pulled toward "reminders do nothing". The generator's repeat-reminder exponent (0.35) differs from the exponent the forecaster assumes (0.5); this is deliberate misspecification and is not corrected.

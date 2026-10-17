@@ -234,6 +234,8 @@ export interface BacktestReport {
   pitHistogram: number[];
   pinball: { model: number; payerMedianBaseline: number; globalBaseline: number; dueDateBaseline: number };
   maeMedianDays: { model: number; payerMedianBaseline: number; globalBaseline: number; dueDateBaseline: number };
+  /** MAE of the oracle median (true parameters known); only for the log-normal family. */
+  oracleMaeDays?: number | null;
   kappa: { truth: number; estimate: number; lo: number; hi: number } | null;
   ghost?: { meanPredicted: number; observed: number; brierModel: number; brierBaseRate: number; n: number };
   notes: string[];

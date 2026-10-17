@@ -9,7 +9,7 @@
 import type { BacktestReport } from '../../shared/types';
 import { DAY_MS, clamp } from './math';
 import { fitModel, makePredictive, type FittedModel, type Observation } from './model';
-import { generateLedger, type Family, type GeneratedInvoice } from '../sim/generator';
+import { PERSONAS, generateLedger, oracleMedianDays, type Family, type GeneratedInvoice } from '../sim/generator';
 
 const LEVELS = [0.1, 0.25, 0.5, 0.75, 0.9];
 
@@ -20,10 +20,14 @@ interface Acc {
   pin: { model: number; payer: number; global: number; due: number };
   mae: { model: number; payer: number; global: number; due: number };
   n: number;
+  oracle: number;
+  family: Family;
   ghost: { predSum: number; obsSum: number; brier: number; brierBase: number; n: number };
 }
 
-const newAcc = (): Acc => ({
+const newAcc = (family: Family): Acc => ({
+  oracle: 0,
+  family,
   pit: new Array(10).fill(0),
   nPit: 0,
   inInt: { '50': 0, '80': 0, '90': 0 },
@@ -129,6 +133,10 @@ function evaluateOrigin(acc: Acc, all: GeneratedInvoice[], t0: number) {
     acc.mae.global += Math.abs(g50 - y);
     acc.mae.payer += Math.abs(p50 - y);
     acc.mae.due += Math.abs(due - y);
+    if (acc.family === 'lognormal') {
+      const persona = PERSONAS.find((p) => p.id === inv.payerId);
+      if (persona) acc.oracle += Math.abs(oracleMedianDays(persona, inv.netDays, inv.amount, age) - y);
+    }
     acc.n += 1;
   }
 }
@@ -148,7 +156,7 @@ export const SCENARIOS: BacktestScenario[] = [
 ];
 
 export function runScenario(sc: BacktestScenario, now = Date.UTC(2026, 9, 17)): BacktestReport {
-  const acc = newAcc();
+  const acc = newAcc(sc.family);
   let nTrain = 0;
   for (const seed of sc.seeds) {
     const { invoices } = generateLedger({ now, seed, family: sc.family, reminderProb: sc.reminderProb, historyDays: 540, recentBoost: 1.2 });
@@ -181,6 +189,7 @@ export function runScenario(sc: BacktestScenario, now = Date.UTC(2026, 9, 17)): 
       globalBaseline: acc.mae.global / n,
       dueDateBaseline: acc.mae.due / n,
     },
+    oracleMaeDays: sc.family === 'lognormal' ? acc.oracle / n : null,
     kappa: null,
     ghost: {
       meanPredicted: acc.ghost.predSum / Math.max(1, acc.ghost.n),
@@ -194,7 +203,7 @@ export function runScenario(sc: BacktestScenario, now = Date.UTC(2026, 9, 17)): 
 }
 
 /** Nudge-effect recovery: does the stage-2 posterior bracket the true reminder responsiveness? */
-export function runNudgeRecovery(seeds = [401, 402, 403, 404, 405, 406, 407, 408], now = Date.UTC(2026, 9, 17)) {
+export function runNudgeRecovery(seeds = Array.from({ length: 40 }, (_, i) => 401 + i), now = Date.UTC(2026, 9, 17)) {
   const rows: { truth: number; estimate: number; lo: number; hi: number; nObs: number }[] = [];
   for (const seed of seeds) {
     const { invoices } = generateLedger({ now, seed, family: 'lognormal', reminderProb: 0.6, historyDays: 540 });
@@ -237,6 +246,7 @@ export function toMarkdown(reports: BacktestReport[], nudge: ReturnType<typeof r
     lines.push(`| Payer empirical quantiles | ${f(r.pinball.payerMedianBaseline)} | ${f(r.maeMedianDays.payerMedianBaseline)} |`);
     lines.push(`| Global model (no payer info) | ${f(r.pinball.globalBaseline)} | ${f(r.maeMedianDays.globalBaseline)} |`);
     lines.push(`| Invoice due date | ${f(r.pinball.dueDateBaseline)} | ${f(r.maeMedianDays.dueDateBaseline)} |`);
+    if (r.oracleMaeDays != null) lines.push(`| *Oracle (true parameters known)* | n/a | *${f(r.oracleMaeDays)}* |`);
     lines.push('');
     if (r.ghost) {
       lines.push(`Ghost (never-pays) probability: mean predicted ${f(r.ghost.meanPredicted * 100, 1)}% vs observed ${f(r.ghost.observed * 100, 1)}%; Brier ${f(r.ghost.brierModel, 4)} vs base-rate ${f(r.ghost.brierBaseRate, 4)} (n=${r.ghost.n}).`, '');
@@ -246,8 +256,11 @@ export function toMarkdown(reports: BacktestReport[], nudge: ReturnType<typeof r
   lines.push('## Reminder-effect recovery (kappa)', '');
   lines.push('Ledgers with a 60%-probability merchant reminder policy. `truth` is the geometric mean of the true per-invoice kappa over reminded, eventually-paid invoices; the estimator only sees reminder dates and payment dates.', '');
   lines.push('| Seed | n obs | Truth | Estimate | 80% interval | Covered |', '|---|---|---|---|---|---|');
-  nudge.forEach((r, i) => lines.push(`| ${i + 1} | ${r.nObs} | ${f(r.truth)} | ${f(r.estimate)} | ${f(r.lo)}-${f(r.hi)} | ${r.truth >= r.lo && r.truth <= r.hi ? 'yes' : 'no'} |`));
+  nudge.slice(0, 8).forEach((r, i) => lines.push(`| ${i + 1} | ${r.nObs} | ${f(r.truth)} | ${f(r.estimate)} | ${f(r.lo)}-${f(r.hi)} | ${r.truth >= r.lo && r.truth <= r.hi ? 'yes' : 'no'} |`));
   const cov = nudge.filter((r) => r.truth >= r.lo && r.truth <= r.hi).length;
-  lines.push('', `Truth fell inside the 80% interval in ${cov}/${nudge.length} runs. The prior is centred on kappa = 1 (no effect), so with little data the estimate is pulled toward "reminders do nothing".`, '');
+  const bias = nudge.reduce((acc, r) => acc + Math.log(r.estimate / r.truth), 0) / nudge.length;
+  const width = nudge.reduce((acc, r) => acc + Math.log(r.hi / r.lo), 0) / nudge.length;
+  lines.push('', `First 8 of ${nudge.length} runs shown. Across all ${nudge.length}: truth fell inside the 80% interval in ${cov}/${nudge.length} (${f((cov / nudge.length) * 100, 0)}%; the standard error of that figure is about 6 points); mean log-bias of the estimate ${f(bias, 3)} (positive = estimate closer to "no effect" than the truth); mean interval width on the log scale ${f(width, 2)}.`, '');
+  lines.push('The interval is a payer-level cluster bootstrap around a grid posterior (invoices of the same payer share an estimated intercept, so treating them as independent made the earlier interval too narrow: it covered the truth in roughly 55% of 40 runs on a separate seed set); a later check of the final method on a different, untouched set of 40 seeds (601-640) gave 30/40 (75%), so expect roughly 75-90%. The prior (sd 0.6 on ln kappa) is centred on kappa = 1, so with little data the estimate is pulled toward "reminders do nothing". The generator\'s repeat-reminder exponent (0.35) differs from the exponent the forecaster assumes (0.5); this is deliberate misspecification and is not corrected.', '');
   return lines.join('\n');
 }

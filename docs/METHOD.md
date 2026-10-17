@@ -15,7 +15,7 @@ For invoice *i* of payer *p*, T is days from sending to payment:
 
 ## Reminder effect
 
-A reminder sent at day `r` shortens the remaining time: `T = r + kappa (T0 - r)`, kappa in (0, 1]. kappa has a grid posterior; the reported range is its 10%/90% quantiles (an **80%** interval). A repeat reminder uses `kappa^0.5` (an assumption, not identified from data). The estimate is observational and assumes comparability between reminded and un-reminded invoices.
+A reminder sent at day `r` shortens the remaining time: `T = r + kappa (T0 - r)`, kappa in (0, 1]. kappa has a grid posterior (prior: ln kappa ~ N(0, 0.6^2)). The reported 80% interval is the posterior mean +/- 1.28 standard deviations on the log scale, where the standard deviation is the larger of the posterior sd and a payer-level cluster-bootstrap sd (200 resamples). The bootstrap is there because invoices of one payer share an estimated intercept and are not independent. A repeat reminder uses `kappa^0.5` (an assumption, not identified from data). The estimate is observational and assumes comparability between reminded and un-reminded invoices.
 
 ## Cash tide
 

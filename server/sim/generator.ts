@@ -6,7 +6,7 @@
  * the latent untreated payment time, ghost flags). It only sees invoices, reminders and payment
  * dates, exactly as it would from PayPal. The backtest uses the hidden truth to *score* it.
  */
-import { DAY_MS, makeRng, type Rng } from '../forecast/math';
+import { DAY_MS, makeRng, normCdf, normPpf, type Rng } from '../forecast/math';
 
 export type Family = 'lognormal' | 'loglogistic' | 'batch';
 
@@ -94,6 +94,20 @@ function adjustToBusinessDay(ms: number): number {
   if (dow === 6) return ms + 2 * DAY_MS;
   if (dow === 0) return ms + DAY_MS;
   return ms;
+}
+
+/**
+ * Oracle benchmark (log-normal family only): the median of the true conditional distribution of the
+ * payment time, given the payer's true parameters and that the invoice is still unpaid at `age` days
+ * and will eventually be paid. No forecaster can have a lower expected error than this oracle about
+ * the realised time, so it is the irreducible-noise reference for the backtest.
+ */
+export function oracleMedianDays(p: Persona, netDays: number, amount: number, age: number): number {
+  const z = (Math.log(amount) - Math.log(REF_AMOUNT)) / 0.8;
+  const mu = Math.log(p.medianDays) + TRUE_BETA_TERMS * Math.log(netDays / 30) + TRUE_BETA_AMOUNT * z;
+  const Fa = normCdf((Math.log(Math.max(age, 1e-6)) - mu) / p.sigma);
+  const target = Math.min(1 - 1e-12, Fa + 0.5 * (1 - Fa));
+  return Math.exp(mu + p.sigma * normPpf(target));
 }
 
 /** Draw the untreated payment time (days) for one invoice. */
