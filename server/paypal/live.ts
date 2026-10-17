@@ -11,12 +11,10 @@
  *   GET  /v2/invoicing/invoices?page=&page_size=        list
  *   POST /v1/notifications/verify-webhook-signature     webhook verification
  *
- * Endpoint paths (create, remind, payments) and invoicing webhook event names were checked against
- * PayPal's published reference; request-body details beyond that were not verifiable from it.
- * This file has been exercised against a local mock of those endpoints (tests/paypal-live.test.ts)
- * but NOT against PayPal's servers from the build environment (no sandbox credentials were
- * available). `npm run paypal:smoke` runs the full create -> send -> remind -> pay -> read loop
- * against your sandbox so you can confirm field names and response shapes on first run.
+ * Verified against the real PayPal sandbox on 17 Oct 2026 with `npm run paypal:smoke`: create + send
+ * (DUE_ON_DATE_SPECIFIED), read, remind, record payment (BANK_TRANSFER), read, list. NOT yet verified
+ * against PayPal: webhook signature verification and a payer paying through PayPal's hosted checkout.
+ * Re-run `npm run paypal:smoke` after any change to this file.
  */
 import { DAY_MS } from '../forecast/math';
 import type { InvoiceStatus } from '../../shared/types';
