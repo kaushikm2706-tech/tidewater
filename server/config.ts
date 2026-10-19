@@ -35,6 +35,19 @@ export interface Config {
     apiKey: string;
     model: string;
   };
+  /** Abuse limits for a public deployment. 0 disables a limit. */
+  limits: {
+    /** Write requests (POST) per IP per minute, all endpoints. */
+    writesPerMinute: number;
+    /** LLM proxy requests per IP per minute. */
+    llmPerMinute: number;
+    /** LLM proxy requests in total per UTC day. */
+    llmDailyCap: number;
+    /** Demo resets per IP per minute. */
+    resetsPerMinute: number;
+  };
+  /** Express `trust proxy` value: how many reverse-proxy hops to trust for the client IP. */
+  trustProxy: number;
   webDist: string;
   version: string;
 }
@@ -70,6 +83,13 @@ export function loadConfig(overrides: Partial<Record<string, string>> = {}): Con
       apiKey: get('LLM_API_KEY'),
       model: get('LLM_MODEL'),
     },
+    limits: {
+      writesPerMinute: Number(get('RATE_LIMIT_PER_MIN', '120')),
+      llmPerMinute: Number(get('LLM_PER_MIN', '12')),
+      llmDailyCap: Number(get('LLM_DAILY_CAP', '300')),
+      resetsPerMinute: Number(get('RESET_PER_MIN', '4')),
+    },
+    trustProxy: Number(get('TRUST_PROXY', '1')),
     webDist: path.join(root, 'dist/web'),
     version: '0.1.0',
   };

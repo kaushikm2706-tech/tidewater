@@ -10,6 +10,7 @@ import { SimPayPal } from './paypal/sim';
 import { httpError } from './services/actions';
 import { proposalFromRow } from './services/proposals';
 import { DAY_MS } from './forecast/math';
+import { DailyCap, rateLimit, securityHeaders } from './ratelimit';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown> | unknown) => (req: Request, res: Response, next: NextFunction) => {
   Promise.resolve(fn(req, res)).catch(next);
@@ -19,6 +20,9 @@ export function createServer(app: App) {
   const { ledger, actions, store, cfg } = app;
   const api = express();
   api.disable('x-powered-by');
+  if (cfg.trustProxy > 0) api.set('trust proxy', cfg.trustProxy);
+  api.use(securityHeaders);
+  const llmCap = new DailyCap(cfg.limits.llmDailyCap);
 
   // The webhook needs the raw body for signature verification, so it is mounted before express.json().
   api.post('/api/paypal/webhook', express.raw({ type: '*/*', limit: '1mb' }), wrap(async (req, res) => {
@@ -34,6 +38,10 @@ export function createServer(app: App) {
   }));
 
   api.use(express.json({ limit: '1mb' }));
+  // Abuse limits for a public deployment (the webhook above is exempt: PayPal must always get through).
+  api.use('/api', rateLimit({ windowMs: 60_000, max: cfg.limits.writesPerMinute, message: 'Too many requests. Please slow down and try again in a minute.', applies: (r) => r.method === 'POST' }));
+  api.use('/api/admin/reseed', rateLimit({ windowMs: 60_000, max: cfg.limits.resetsPerMinute, message: 'Too many demo resets. Try again in a minute.' }));
+  api.use('/api/llm/chat', rateLimit({ windowMs: 60_000, max: cfg.limits.llmPerMinute, message: 'Too many assistant requests. Try again in a minute.' }));
 
   api.get('/api/health', (_req, res) => res.json({ ok: true, version: cfg.version, now: ledger.now(), mode: ledger.mode() }));
   api.get('/api/mode', (_req, res) => res.json(ledger.mode()));
@@ -146,6 +154,8 @@ export function createServer(app: App) {
     if (!st.configured) return res.status(503).json({ error: 'No LLM configured. Set LLM_BASE_URL, LLM_API_KEY and LLM_MODEL.' });
     const body = z.object({ messages: z.array(z.any()).min(1).max(200), tools: z.array(z.any()).max(40).optional(), tool_choice: z.any().optional(), temperature: z.number().min(0).max(2).optional(), stream: z.boolean().optional() }).safeParse(req.body);
     if (!body.success) throw httpError(400, 'messages required');
+    // A model "turn" is one provider call, so the cap bounds spend on the key regardless of who calls.
+    if (!llmCap.take()) return res.status(429).json({ error: "This demo's daily AI budget is used up. Try again after 00:00 UTC, or run Tidewater locally (no key needed for the offline planner)." });
     const ctrl = new AbortController();
     res.on('close', () => ctrl.abort());
     const up = await fetch(`${cfg.llm.baseUrl}/chat/completions`, {

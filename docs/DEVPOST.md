@@ -20,9 +20,12 @@ Calibrated intervals in backtests (80% interval observed 77-82% across three sce
 
 ## What we learned / limits (please read)
 - Demo data is **synthetic**; the simulator badge is always visible. Backtests are synthetic too.
-- The PayPal sandbox client was verified with a live smoke test (create, send, remind, record payment, read, list). Webhook delivery and payer checkout through PayPal's own page were not tested.
+- The PayPal sandbox client was verified with a live smoke test (create, send, remind, record payment, read, list). The full app was also run against the sandbox: a human-confirmed reminder went out through PayPal and was recorded in the audit trail. Webhook delivery and payer checkout through PayPal's own page were not tested.
 - Median-date error is mostly irreducible noise (18.9 days vs 18.0 for an oracle that knows the true parameters, on synthetic data); the value is calibrated uncertainty.
 - The reminder effect is estimated observationally.
+
+## Try it
+Hosted demo: https://tidewater-mink.onrender.com (simulator mode, synthetic data). It runs on a free plan, so the first load can take about a minute. The simulated clock is shared between visitors; use **Reset demo** in the header to restore the starting state. The PayPal sandbox integration runs from the repo with your own sandbox keys.
 
 ## What's next
 Real-merchant validation, partial-payment modelling, richer payer features, multi-currency.

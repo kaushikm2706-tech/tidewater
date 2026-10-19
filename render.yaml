@@ -9,6 +9,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.13.0
+      - key: LLM_DAILY_CAP
+        value: "300"
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET

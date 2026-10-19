@@ -132,3 +132,59 @@ describe('Tidewater API (simulator mode)', () => {
     expect((await post(`/api/dev/pay/SYN-NORTHWIND-1`)).status).toBe(404);
   });
 });
+
+describe('Public-demo safeguards', () => {
+  let small: http.Server;
+  let smallBase = '';
+  const sPost = async (p: string, body: unknown = {}) => {
+    const r = await fetch(smallBase + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: r.status, retryAfter: r.headers.get('retry-after'), body: (await r.json().catch(() => null)) as any };
+  };
+
+  beforeAll(async () => {
+    const a = await buildApp(loadConfig({ TIDEWATER_DB: ':memory:', PAYPAL_CLIENT_ID: '', PAYPAL_CLIENT_SECRET: '', RATE_LIMIT_PER_MIN: '6', RESET_PER_MIN: '2' }), { now: NOW });
+    small = createServer(a).listen(0);
+    await new Promise((r) => small.once('listening', r));
+    smallBase = `http://127.0.0.1:${(small.address() as AddressInfo).port}`;
+  }, 60_000);
+  afterAll(() => small.close());
+
+  it('rate-limits write requests per client but never reads', async () => {
+    for (let i = 0; i < 3; i++) expect((await fetch(smallBase + '/api/health')).status).toBe(200);
+    const statuses: number[] = [];
+    for (let i = 0; i < 8; i++) statuses.push((await sPost('/api/simulate-nudge', { invoiceIds: [] })).status);
+    expect(statuses.slice(0, 6).every((s) => s !== 429)).toBe(true);
+    expect(statuses.slice(6)).toEqual([429, 429]);
+    const blocked = await sPost('/api/simulate-nudge', { invoiceIds: [] });
+    expect(Number(blocked.retryAfter)).toBeGreaterThan(0);
+    expect(String(blocked.body.error)).toMatch(/too many/i);
+    expect((await fetch(smallBase + '/api/snapshot')).status).toBe(200);
+  });
+
+  it('sets basic security headers', async () => {
+    const r = await fetch(smallBase + '/api/health');
+    expect(r.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(r.headers.get('x-powered-by')).toBeNull();
+  });
+});
+
+describe('Demo reset (simulator mode)', () => {
+  it('restores the starting state: clears proposals and the audit trail, resets the clock', async () => {
+    const before = await get<Snapshot>('/api/snapshot');
+    const adv = await post('/api/sim/advance', { days: 7 });
+    expect(adv.status).toBe(200);
+    const moved = await get<Snapshot>('/api/snapshot');
+    expect(moved.now).toBeGreaterThan(before.now);
+
+    const r = await post('/api/admin/reseed');
+    expect(r.status).toBe(200);
+    const after = await get<Snapshot>('/api/snapshot');
+    expect(after.proposals.filter((p) => p.status === 'pending')).toHaveLength(0);
+    expect(after.mode.paypal).toBe('simulator');
+    // The clock returns to "now" rather than staying a week ahead.
+    expect(Math.abs(after.now - Date.now())).toBeLessThan(60_000);
+    const audit = await get<AuditEntry[]>('/api/audit');
+    expect(audit.some((a) => a.action === 'seed.simulator')).toBe(true);
+    expect(audit.some((a) => a.action === 'clock.advanced')).toBe(false);
+  }, 60_000);
+});

@@ -24,6 +24,7 @@ export function App() {
   const [llm, setLlm] = React.useState<{ configured: boolean; model: string | null } | null>(null);
   const [showNew, setShowNew] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [confirmReset, setConfirmReset] = React.useState(false);
   const scenarioRef = React.useRef<string>('');
 
   const toast = React.useCallback((msg: string, isErr = false) => {
@@ -100,6 +101,20 @@ export function App() {
           <div className="tw-row" style={{ gap: 6 }}>
             <button className="tw-btn" disabled={busy} onClick={() => run(async () => { const r = await api.advance(7); toast(`+7 days: ${r.paid.length} invoice${r.paid.length === 1 ? '' : 's'} paid`); }, undefined)}>+7 days</button>
             <button className="tw-btn" disabled={busy} onClick={() => run(async () => { const r = await api.advance(14); toast(`+14 days: ${r.paid.length} invoice${r.paid.length === 1 ? '' : 's'} paid`); }, undefined)}>+14 days</button>
+            <button
+              className={`tw-btn ${confirmReset ? 'danger' : ''}`}
+              disabled={busy}
+              title="The simulated clock and ledger are shared by everyone using this demo. Reset restores the starting state: it clears proposals, reminders and the audit trail."
+              onClick={() => {
+                if (!confirmReset) {
+                  setConfirmReset(true);
+                  window.setTimeout(() => setConfirmReset(false), 4000);
+                  return;
+                }
+                setConfirmReset(false);
+                run(async () => { await api.reseed(); scenarioRef.current = ''; setTab('queue'); }, 'Demo reset to the starting state.');
+              }}
+            >{confirmReset ? 'Click again to reset' : 'Reset demo'}</button>
           </div>
         )}
         <button className="tw-btn" onClick={() => setShowNew(true)}>New invoice</button>
