@@ -85,7 +85,6 @@ export function computeTide(model: FittedModel, invoices: Invoice[], now: number
   const H = opts.horizonDays ?? TIDE_HORIZON_DAYS;
   const draws = opts.draws ?? 1200;
   const open = openInvoices(invoices);
-  const day0 = dayStartUtc(now);
   const base = open.map((inv) => predictiveFor(model, inv, now));
   const scen =
     opts.scenarioIds && opts.scenarioIds.size
@@ -104,7 +103,8 @@ export function computeTide(model: FittedModel, invoices: Invoice[], now: number
     for (let j = 0; j < open.length; j++) {
       const T = base[j].sampleFromU(U1[d * open.length + j], U2[d * open.length + j]);
       if (!Number.isFinite(T)) continue;
-      const idx = Math.max(0, Math.floor((open[j].sentAt + T * DAY_MS - day0) / DAY_MS));
+      // Bucket k holds payments made by now + k days, so point k lines up with the KPI tiles.
+      const idx = Math.max(0, Math.ceil((open[j].sentAt + T * DAY_MS - now) / DAY_MS));
       if (idx <= H) mc[d * (H + 1) + idx] += open[j].amount;
     }
     for (let k = 1; k <= H; k++) mc[d * (H + 1) + k] += mc[d * (H + 1) + k - 1];
@@ -112,7 +112,7 @@ export function computeTide(model: FittedModel, invoices: Invoice[], now: number
 
   const out: TidePoint[] = [];
   for (let k = 0; k <= H; k++) {
-    const dayEnd = day0 + (k + 1) * DAY_MS;
+    const dayEnd = now + k * DAY_MS;
     let expected = 0;
     let scenario = 0;
     let naive = 0;
@@ -126,7 +126,7 @@ export function computeTide(model: FittedModel, invoices: Invoice[], now: number
     for (let d = 0; d < draws; d++) col.push(mc[d * (H + 1) + k]);
     col.sort((a, b) => a - b);
     out.push({
-      day: isoDay(day0 + k * DAY_MS),
+      day: isoDay(now + k * DAY_MS),
       dayIndex: k,
       expected,
       p10: quantile(col, 0.1),

@@ -41,6 +41,9 @@ describe('Tidewater API (simulator mode)', () => {
       expect(t[i].p10).toBeLessThanOrEqual(t[i].p90 + 1e-6);
     }
     expect(snap.kpis.openCount).toBe(snap.invoices.length);
+    // The chart's day-30 point and the KPI tile describe the same moment, so the gap must agree.
+    expect(t[30].expected - t[30].naive).toBeCloseTo(snap.kpis.dueDateGap30d, 3);
+    expect(t[14].expected).toBeCloseTo(snap.kpis.expected14d, 3);
     // forecast must never include invoices unpaid for more than 120 days
     expect(snap.invoices.every((f) => (snap.now - f.sentAt) / 86_400_000 <= 120)).toBe(true);
     expect(snap.kpis.staleCount).toBeGreaterThan(0);
