@@ -23,7 +23,7 @@ Tidewater predicts *when* each open PayPal invoice will be paid, as a probabilit
 
 ## Live demo
 
-**Demo video:** https://youtu.be/cNRbFVvUTe4
+**Demo video:** https://www.youtube.com/watch?v=vkyfY1dCgag
 
 https://tidewater-mink.onrender.com runs in **simulator mode** (synthetic data, no PayPal credentials, no LLM key). Notes:
 

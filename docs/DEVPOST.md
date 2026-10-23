@@ -25,7 +25,7 @@ Calibrated intervals in backtests (80% interval observed 77-82% across three sce
 - The reminder effect is estimated observationally.
 
 ## Try it
-Demo video: https://youtu.be/cNRbFVvUTe4
+Demo video: https://www.youtube.com/watch?v=vkyfY1dCgag
 
 Hosted demo: https://tidewater-mink.onrender.com (simulator mode, synthetic data). It runs on a free plan, so the first load can take about a minute. The simulated clock is shared between visitors; use **Reset demo** in the header to restore the starting state. The PayPal sandbox integration runs from the repo with your own sandbox keys.
 
