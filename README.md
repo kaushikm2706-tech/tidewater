@@ -21,6 +21,12 @@ Tidewater predicts *when* each open PayPal invoice will be paid, as a probabilit
 
 ![Collector agent](docs/img/collector.png)
 
+## How PayPal and AI are used
+
+**PayPal (Invoicing API v2, sandbox only).** `LivePayPal` (`server/paypal/live.ts`) creates and sends invoices with a due date, reads and lists them, sends payment reminders and records payments. The app polls PayPal every 45 seconds to pick up payments, and has a webhook handler (not yet tested against real sandbox delivery). A reminder is sent through PayPal only when a human clicks **Confirm & send**; the agent cannot call that endpoint. The default demo uses `SimPayPal`, an in-process simulator with the same interface, so no credentials are needed.
+
+**AI.** (1) The **Collector agent** is built on AG Studio's AI harness. It calls tools for every number, ranks invoices by the expected extra cash a reminder brings in, simulates the effect on the cash forecast, and drafts reminders, but can only propose. With `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` set it uses any OpenAI-compatible model through a server-side proxy (so far that path has been tested only against a mock provider, not a live one). With no key it falls back to a deterministic rule-based planner, which is **not** a language model; the header badge says which one is running. The hosted demo and the demo video use the offline planner. (2) The **forecast** is a statistical model (hierarchical censored log-normal with a never-pays component, fit by EM), not an LLM.
+
 ## Live demo
 
 **Demo video:** https://www.youtube.com/watch?v=vkyfY1dCgag
@@ -91,7 +97,7 @@ web/ (React 18 + AG Studio 3)  <->  server/ (Express + node:sqlite)
 
 ## Honest limitations
 
-- **`LivePayPal` has been run against the real PayPal sandbox once** (17 Oct 2026, `npm run paypal:smoke`): create and send an invoice with a specific due date, read it back, send a reminder, record a payment, read it back as `MARKED_AS_PAID`, and list invoices all succeeded. That confirms the endpoint paths, request bodies and `DUE_ON_DATE_SPECIFIED`. **Not yet verified against the real sandbox:** webhook signature verification and event delivery, a payer paying a hosted invoice through PayPal's own checkout (the smoke test records the payment through the API instead), The full app was also run in sandbox mode on 19 Oct 2026: a drafted reminder was confirmed by a human and the audit trail recorded "Reminder sent via PayPal" for a real sandbox invoice. The webhook handler reacts to any `INVOICING.*` event and re-syncs, and the app also polls, because sandbox webhooks are reported to be unreliable.
+- **`LivePayPal` has been run against the real PayPal sandbox once** (17 Oct 2026, `npm run paypal:smoke`): create and send an invoice with a specific due date, read it back, send a reminder, record a payment, read it back as `MARKED_AS_PAID`, and list invoices all succeeded. That confirms the endpoint paths, request bodies and `DUE_ON_DATE_SPECIFIED`. **Not yet verified against the real sandbox:** webhook signature verification and event delivery, a payer paying a hosted invoice through PayPal's own checkout (the smoke test records the payment through the API instead). The full app was also run in sandbox mode on 19 Oct 2026: a drafted reminder was confirmed by a human and the audit trail recorded "Reminder sent via PayPal" for a real sandbox invoice. The webhook handler reacts to any `INVOICING.*` event and re-syncs, and the app also polls, because sandbox webhooks are reported to be unreliable.
 - **The LLM path has been tested only against a mock OpenAI-compatible server.** Compatibility with specific providers is unverified.
 - **All backtests and reminder-effect results are on synthetic data.** The reminder effect is estimated observationally and assumes reminded and un-reminded invoices are comparable. The weaker effect of repeat reminders (exponent 0.5) is an assumption.
 - Median-date error in the well-specified backtest is about 18.9 days, against 18.0 for an oracle that knows every payer's true parameters, so almost all of it is irreducible noise in that synthetic data. Real payers may be harder or easier. The value is calibrated uncertainty (80% interval observed 77-82%), not precise dates.
