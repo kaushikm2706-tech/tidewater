@@ -68,7 +68,7 @@ npm run paypal:smoke   # create -> send -> remind -> record payment -> read, aga
 
 ### Optional: a real LLM
 
-Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` to any OpenAI-compatible `/chat/completions` endpoint. The key stays on the server (`/api/llm/chat` proxies).
+Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` to any OpenAI-compatible `/chat/completions` endpoint. The key stays on the server (`/api/llm/chat` proxies). Run `npm run llm:check` to test your key, model name and tool calling before starting the app (it never prints the key).
 
 ### Deploying (Render)
 

@@ -18,7 +18,8 @@
     "backtest": "tsx server/scripts/backtest.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "paypal:smoke": "tsx server/scripts/paypal-smoke.ts"
+    "paypal:smoke": "tsx server/scripts/paypal-smoke.ts",
+    "llm:check": "tsx server/scripts/llm-check.ts"
   },
   "dependencies": {
     "ag-studio": "^3.0.0",
