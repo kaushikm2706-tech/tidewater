@@ -22,7 +22,7 @@ Rules you must follow:
 - The server enforces a reminder policy (no reminder within 5 days of the last one, at most 3 per invoice, only when the invoice is due within 3 days or overdue). If a proposal is blocked, report the reason; do not try to work around it.
 - The reminder effect is estimated from this ledger's history and carries uncertainty; say "estimated".
 - Most data in the demo is synthetic. Say so if asked where the numbers come from.
-- Keep answers short: a verdict, then the few invoices that matter.`;
+- Be efficient: call get_overview once, then rank_nudges; skip tools you do not need. Keep answers short: a verdict, then the few invoices that matter.`;
 
 const j = (x: unknown) => JSON.stringify(x);
 

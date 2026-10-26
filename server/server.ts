@@ -158,13 +158,24 @@ export function createServer(app: App) {
     if (!llmCap.take()) return res.status(429).json({ error: "This demo's daily AI budget is used up. Try again after 00:00 UTC, or run Tidewater locally (no key needed for the offline planner)." });
     const ctrl = new AbortController();
     res.on('close', () => ctrl.abort());
-    const up = await fetch(`${cfg.llm.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.llm.apiKey}` },
-      // max_tokens is capped because some providers count it toward per-minute token limits.
-      body: JSON.stringify({ max_tokens: 2048, ...body.data, model: cfg.llm.model }),
-      signal: ctrl.signal,
-    }).catch((e) => { throw httpError(502, `LLM provider unreachable: ${(e as Error).message}`); });
+    const payload = JSON.stringify({ max_tokens: 1536, ...body.data, model: cfg.llm.model });
+    // Free provider tiers cap tokens per minute; when told to wait a few seconds, wait and retry (up to 3 tries).
+    let up: globalThis.Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      up = await fetch(`${cfg.llm.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.llm.apiKey}` },
+        body: payload,
+        signal: ctrl.signal,
+      }).catch((e) => { throw httpError(502, `LLM provider unreachable: ${(e as Error).message}`); });
+      if (up.status !== 429 || attempt === 2) break;
+      const waitS = Number(up.headers.get('retry-after'));
+      if (!Number.isFinite(waitS) || waitS <= 0 || waitS > 25) break;
+      await up.arrayBuffer().catch(() => null);
+      await new Promise((r) => setTimeout(r, Math.ceil(waitS * 1000) + 250));
+      if (ctrl.signal.aborted) return;
+    }
+    if (!up) throw httpError(502, 'LLM provider unreachable');
     res.status(up.status);
     res.setHeader('Content-Type', up.headers.get('content-type') ?? 'application/json');
     if (!up.body) return res.end(await up.text());
