@@ -20,7 +20,7 @@ Calibrated intervals in backtests (80% interval observed 77-82% across three sce
 
 ## What we learned / limits (please read)
 - Demo data is **synthetic**; the simulator badge is always visible. Backtests are synthetic too.
-- The real-LLM path was verified locally on 26 Oct 2026 with Groq's `openai/gpt-oss-120b` (free tier): the Collector ranked invoices and simulated nudges using tools. The hosted demo and the demo video use the deterministic offline planner (not a language model), because a free-tier key cannot serve several visitors at once. Drafting proposals with the real model was not tested end to end.
+- The real-LLM path was verified locally on 26 Oct 2026 with Groq's `openai/gpt-oss-120b` (free tier): the Collector ranked invoices, simulated nudges and drafted a reminder into the approval queue (not sent) using tools. The hosted demo and the demo video use the deterministic offline planner (not a language model), because a free-tier key cannot serve several visitors at once.
 - The PayPal sandbox client was verified with a live smoke test (create, send, remind, record payment, read, list). The full app was also run against the sandbox: a human-confirmed reminder went out through PayPal and was recorded in the audit trail. Webhook delivery and payer checkout through PayPal's own page were not tested.
 - Median-date error is mostly irreducible noise (18.9 days vs 18.0 for an oracle that knows the true parameters, on synthetic data); the value is calibrated uncertainty.
 - The reminder effect is estimated observationally.
