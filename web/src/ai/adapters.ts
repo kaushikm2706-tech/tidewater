@@ -40,12 +40,20 @@ function channel<T>() {
 }
 
 // ---------------------------------------------------------------------------------- OpenAI-compatible
-function toOpenAiMessages(req: AgLlmRequest): any[] {
+export function toOpenAiMessages(req: AgLlmRequest): any[] {
   const out: any[] = [];
+  // Tool calls and results from earlier questions are bulky and already summarised in the assistant's
+  // answer text, so only the current question's tool round trips are re-sent (keeps requests small
+  // for providers with per-minute token limits).
+  const items = req.input as Item[];
+  let lastUser = -1;
+  items.forEach((it, i) => { if (it.type === 'message' && it.kind === 'input' && it.role !== 'system') lastUser = i; });
   if (req.instructions) out.push({ role: 'system', content: req.instructions });
   let pending: any | null = null; // assistant message accumulating tool_calls
   const flush = () => { if (pending) { out.push(pending); pending = null; } };
-  for (const it of req.input as Item[]) {
+  for (let idx = 0; idx < items.length; idx++) {
+    const it = items[idx];
+    if (idx < lastUser && (it.type === 'function_call' || it.type === 'function_call_output')) continue;
     if (it.type === 'message' && it.kind === 'input') {
       flush();
       out.push({ role: it.role === 'system' ? 'system' : 'user', content: it.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n') });
