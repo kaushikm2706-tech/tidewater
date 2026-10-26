@@ -14,6 +14,19 @@ if (!baseUrl || !apiKey || !model) {
 }
 console.log(`Endpoint: ${baseUrl}\nModel:    ${model}\n`);
 
+if (process.argv.includes('--models')) {
+  const r = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const j: any = await r.json().catch(() => null);
+  if (!r.ok || !Array.isArray(j?.data)) {
+    console.error(`Could not list models: HTTP ${r.status}`, JSON.stringify(j).slice(0, 400));
+    process.exit(2);
+  }
+  const ids: string[] = j.data.map((m: any) => m.id).sort();
+  console.log(`Models available to this key (${ids.length}):\n` + ids.map((i) => `  ${i}`).join('\n'));
+  console.log('\nPut one of these in LLM_MODEL (choose a chat model; skip whisper/tts/guard models), then run: npm run llm:check');
+  process.exit(0);
+}
+
 async function chat(body: Record<string, unknown>) {
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -32,6 +45,7 @@ async function chat(body: Record<string, unknown>) {
 
 function fail(step: string, r: { status: number; text: string }) {
   console.error(`FAIL  ${step}: HTTP ${r.status}\n${r.text.slice(0, 600)}`);
+  if (r.status === 404 || /model/i.test(r.text)) console.error('\nTip: list the models your key can use with: npm run llm:check -- --models');
   process.exit(2);
 }
 
