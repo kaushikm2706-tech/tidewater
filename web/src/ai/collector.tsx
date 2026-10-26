@@ -36,9 +36,9 @@ function defineTools(studio: AgStudioApi): any[] {
       execute: async (_args: any, ctx: any) => {
         const snap = await api.snapshot();
         const k = snap.kpis;
-        const top = [...snap.invoices].sort((a, b) => b.amount * b.risk - a.amount * a.risk).slice(0, 5).map((f) => ({ invoiceId: f.invoiceId, number: f.number, payer: f.payerName, amountText: usd(f.amount), risk: Math.round(f.risk * 100) / 100, medianPaidOn: day(f.quantiles.p50) }));
+        const top = [...snap.invoices].sort((a, b) => b.amount * b.risk - a.amount * a.risk).slice(0, 4).map((f) => ({ invoiceId: f.invoiceId, number: f.number, payer: f.payerName, amountText: usd(f.amount), risk: Math.round(f.risk * 100) / 100, medianPaidOn: day(f.quantiles.p50) }));
         const summary = `${k.openCount} open invoices, ${usd(k.outstanding)} outstanding. Expected in 14 days: ${usd(k.expected14d)}; in 30 days: ${usd(k.expected30d)} versus ${usd(k.dueByDate30d)} if every invoice were paid on its due date (the due dates over-promise by ${usd(-k.dueDateGap30d)}). ${k.atRiskCount} invoices (${usd(k.atRisk)}) are at risk. Reminder effect is ${snap.model.nudge.basis}: remaining time x${snap.model.nudge.kappa.toFixed(2)}.`;
-        return ctx.success(j({ summary, kpis: k, topRisks: top, syntheticShare: snap.model.syntheticShare }), { summary });
+        return ctx.success(j({ summary, topRisks: top, syntheticShare: snap.model.syntheticShare }), { summary });
       },
     }),
     d({
@@ -61,7 +61,7 @@ function defineTools(studio: AgStudioApi): any[] {
       execute: async ({ limit }: any, ctx: any) => {
         const n = Math.min(8, Math.max(1, Math.round(Number(limit) || 5)));
         const ranked = await api.rank(n);
-        const nudges = ranked.map((r) => ({ invoiceId: r.invoiceId, number: r.number, payerName: r.payerName, amountText: usd(r.amount, r.currency), p14Before: Math.round(r.probPaid14dBefore * 100) / 100, p14After: Math.round(r.probPaid14dAfter * 100) / 100, expectedGain14d: Math.round(r.expectedGain14d), gainText: `+${usd(r.expectedGain14d, r.currency)}`, why: r.why }));
+        const nudges = ranked.map((r) => ({ invoiceId: r.invoiceId, number: r.number, payerName: r.payerName, amountText: usd(r.amount, r.currency), p14: `${Math.round(r.probPaid14dBefore * 100)}% -> ${Math.round(r.probPaid14dAfter * 100)}%`, gainText: `+${usd(r.expectedGain14d, r.currency)}`, why: r.why }));
         return ctx.success(j({ nudges }), { nudges });
       },
     }),

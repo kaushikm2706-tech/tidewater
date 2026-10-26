@@ -152,7 +152,7 @@ export function createServer(app: App) {
   api.post('/api/llm/chat', wrap(async (req, res) => {
     const st = llmStatus(cfg);
     if (!st.configured) return res.status(503).json({ error: 'No LLM configured. Set LLM_BASE_URL, LLM_API_KEY and LLM_MODEL.' });
-    const body = z.object({ messages: z.array(z.any()).min(1).max(200), tools: z.array(z.any()).max(40).optional(), tool_choice: z.any().optional(), temperature: z.number().min(0).max(2).optional(), stream: z.boolean().optional() }).safeParse(req.body);
+    const body = z.object({ messages: z.array(z.any()).min(1).max(200), tools: z.array(z.any()).max(40).optional(), tool_choice: z.any().optional(), temperature: z.number().min(0).max(2).optional(), stream: z.boolean().optional(), max_tokens: z.number().int().min(64).max(4096).optional() }).safeParse(req.body);
     if (!body.success) throw httpError(400, 'messages required');
     // A model "turn" is one provider call, so the cap bounds spend on the key regardless of who calls.
     if (!llmCap.take()) return res.status(429).json({ error: "This demo's daily AI budget is used up. Try again after 00:00 UTC, or run Tidewater locally (no key needed for the offline planner)." });
@@ -161,7 +161,8 @@ export function createServer(app: App) {
     const up = await fetch(`${cfg.llm.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.llm.apiKey}` },
-      body: JSON.stringify({ ...body.data, model: cfg.llm.model }),
+      // max_tokens is capped because some providers count it toward per-minute token limits.
+      body: JSON.stringify({ max_tokens: 2048, ...body.data, model: cfg.llm.model }),
       signal: ctrl.signal,
     }).catch((e) => { throw httpError(502, `LLM provider unreachable: ${(e as Error).message}`); });
     res.status(up.status);
